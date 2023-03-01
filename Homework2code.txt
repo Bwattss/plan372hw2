@@ -1,0 +1,101 @@
+firedata <- read.csv("Fire_Incidents.csv")
+library(lubridate)
+library(tidyverse)
+#I am changing the format of the dates so i can work with them
+firedata$arrive_date_time<- ymd_hms(firedata$arrive_date_time)
+firedata$dispatch_date_time<- ymd_hms(firedata$dispatch_date_time)
+
+#I am finding the difference bwteen arrival and dispacth
+timedifference <- difftime(firedata$arrive_date_time,
+                           firedata$dispatch_date_time,
+                           units = c("mins"))
+view(timedifference)
+
+#I am getting the average of the difference. There are some missing values
+#so I used na.rm
+
+mean(timedifference, na.rm = TRUE)
+
+#which stations have the highest and lowest average wait times
+
+
+stations <- firedata %>% group_by(station) %>% summarize(mean(difftime(
+  arrive_date_time, dispatch_date_time, units = ("mins")
+), na.rm = TRUE))
+
+#How has the response time fluctuated over time 
+#so in order to do this date needs to be on the x axis and response time 
+#should be on the y axis 
+# I also think we need to group by date
+
+firedata$date <- date(firedata$dispatch_date_time)
+firedata$week <- week(firedata$dispatch_date_time)
+firedata$year <- year(firedata$dispatch_date_time)
+
+
+overtime <-  firedata %>% group_by(week) %>% summarize(
+  responsetime = mean(difftime(
+  arrive_date_time, dispatch_date_time, units = ("mins")
+), na.rm = TRUE))
+
+
+overtimeyear <-  firedata %>% group_by(year) %>% summarize(
+  responsetime = mean(difftime(
+    arrive_date_time, dispatch_date_time, units = ("mins")
+  ), na.rm = TRUE))
+
+#response time by week 
+ggplot(overtime, aes(x = week, y = responsetime)) + 
+  geom_bar(stat = "Identity")
+
+#response time by year
+ggplot(overtimeyear, aes(x = year, y = responsetime)) + 
+  geom_bar(stat = "Identity")
+
+
+#At what time of day are calls most likely to occur
+firedata$hour <- hour(firedata$dispatch_date_time)
+
+byhour <- firedata %>% group_by(hour) %>% summarize(
+  responsetime = mean(difftime(
+    arrive_date_time, dispatch_date_time, units = ("mins")
+  ), na.rm = TRUE))
+
+ggplot(byhour, aes(x = hour, y = responsetime)) + 
+  geom_bar(stat = "Identity")
+
+#how much of the calls are actually fires?
+fires <- firedata %>% filter(incident_type <= 199)
+nrow(fires)
+nrow(firedata)
+
+#what is the average response time for fires?
+fireresponse <- difftime(fires$arrive_date_time,
+                           fires$dispatch_date_time,
+                           units = c("mins"))
+mean(fireresponse, na.rm = TRUE)
+
+#repeating steps 2-4 for fires
+
+#does it vary by station 
+firesbystation <- fires %>% group_by(station) %>% summarize(mean(difftime(
+  arrive_date_time, dispatch_date_time, units = ("mins")
+), na.rm = TRUE))
+
+#has it changed over time 
+firesoveryear <-  fires %>% group_by(year) %>% summarize(
+  responsetime = mean(difftime(
+    arrive_date_time, dispatch_date_time, units = ("mins")
+  ), na.rm = TRUE))
+
+ggplot(firesoveryear, aes(x = year, y = responsetime)) + 
+  geom_bar(stat = "Identity")
+
+#what time of day is most common 
+byhourfires <- fires %>% group_by(hour) %>% summarize(
+  responsetime = mean(difftime(
+    arrive_date_time, dispatch_date_time, units = ("mins")
+  ), na.rm = TRUE))
+
+ggplot(byhourfires, aes(x = hour, y = responsetime)) + 
+  geom_bar(stat = "Identity")
